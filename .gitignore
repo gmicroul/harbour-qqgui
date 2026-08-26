@@ -1,0 +1,19 @@
+# qmake / build artifacts
+Makefile
+*.o
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+/.qmake.stash
+*.pro.user*
+
+# compiled binary (same name as project)
+/harbour-qqcat
+
+# rpm packaging artifacts
+/rpmbuild/
+rpm/*.tar.bz2
+rpm/*-build/
+*.orig
+*~

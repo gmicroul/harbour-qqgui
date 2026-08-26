@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=QQ Bridge
+Comment=OneBot11 QQ client for Sailfish OS
+Exec=/usr/bin/harbour-qqcat
+Icon=harbour-qqcat
+X-Nemo-Application-Type=silica-qt5
+Categories=Network;InstantMessaging;
+
+[X-Sailjail]
+Sandboxing=Disabled
