@@ -17,3 +17,4 @@ rpm/*.tar.bz2
 rpm/*-build/
 *.orig
 *~
+*.rpm
