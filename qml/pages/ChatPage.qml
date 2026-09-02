@@ -19,13 +19,15 @@ Page {
     // 长按气泡后的操作条状态
     property bool bubbleMenuOpen: false
     property string menuText: ""
-    property int menuMid: 0
+    property var menuMid: 0
+    property bool menuMine: false
     property string menuWho: ""
     property int mMid: 0
     property string mWho: ""
     property string mText: ""
 
     property var pending: ({})
+    property var dlPending: ({})
     property var lastSent: null
     // 当前引用的目标消息 {mid, who, snippet}
     property var replyTarget: null
@@ -79,7 +81,8 @@ Page {
                                     ? parseInt(s.data.id) : -1 })
             } else if (s.type === "reply") {
                 imgs.push({ isReply: true,
-                            rid: s.data && s.data.id ? String(s.data.id) : "" })
+                            rid: s.data && s.data.id ? String(s.data.id) : "",
+                            ridText: s.data && s.data.text ? s.data.text : "" })
             } else if (s.type === "video") {
                 imgs.push({ video: true,
                             url: s.data && s.data.url ? s.data.url : "",
@@ -89,7 +92,8 @@ Page {
                             name: s.data && (s.data.name || s.data.file)
                                   ? (s.data.name || s.data.file) : "file",
                             fid: s.data && s.data.file_id
-                                 ? s.data.file_id : "" })
+                                 ? s.data.file_id : "",
+                            url: s.data && s.data.url ? s.data.url : "" })
             }
         }
         return { text: t.join(" "), images: imgs }
@@ -185,34 +189,93 @@ Page {
         }
     }
 
-    function resolveFile(fid, cb) {
+    function saveDownloaded(url, name, cb) {
+        var nm = name && name.length > 0 ? name : "group-file"
+        var dst = "/home/defaultuser/Downloads/qqcat/" + nm
+        var tok = ob.downloadFile(url, dst)
+        dlPending[tok] = cb
+    }
+
+    function resolveFile(fid, furl, gid, busid, cb) {
+        if (furl && furl.indexOf("http") === 0) {
+            saveDownloaded(furl, "", cb)
+            return
+        }
+        if (gid && gid.length > 0) {
+            var ga = { group_id: parseInt(gid), file_id: fid }
+            if (busid && busid.length > 0) ga.busid = parseInt(busid)
+            var e2 = ob.sendAction("get_group_file_url",
+                                   JSON.stringify(ga))
+            pending[e2] = function(ok, data) {
+                if (!ok) { cb("", false); return }
+                var d = JSON.parse(data)
+                var url = d.url || d.file_url || d.file || ""
+                if (url.indexOf("/") !== 0 && url.indexOf("http") !== 0) {
+                    cb("", false); return
+                }
+                if (url.indexOf("http") === 0)
+                    saveDownloaded(url, d.file_name || d.name || "", cb)
+                else {
+                    var base = url.split("/").pop()
+                    var dst = "/home/defaultuser/Downloads/qqcat/" + base
+                    cb(base, ob.copyFile(url, dst))
+                }
+            }
+            return
+        }
         if (!fid || fid.length === 0) { cb("", false); return }
-        var e = ob.sendAction("get_file", JSON.stringify({ file_id: fid }))
+        var e = ob.sendAction("get_file", JSON.stringify({ file: fid }))
         pending[e] = function(ok, data) {
             if (!ok) { cb("", false); return }
             var d = JSON.parse(data)
-            var p = d.path || d.file_path || d.file || ""
-            if (p.indexOf("/") !== 0) { cb("", false); return }
-            var base = p.split("/").pop()
-            var dst = "/home/defaultuser/Downloads/qqcat/" + base
-            cb(base, ob.copyFile(p, dst))
+            var local = d.file || ""
+            if (local.indexOf("/") === 0) {
+                var base = local.split("/").pop()
+                var dst = "/home/defaultuser/Downloads/qqcat/" + base
+                cb(base, ob.copyFile(local, dst))
+            } else if (d.url && d.url.indexOf("http") === 0) {
+                saveDownloaded(d.url, d.file_name || "", cb)
+            } else {
+                cb("", false)
+            }
         }
     }
 
-    function resolveQuote(rowIndex, rid) {
+    function resolveQuote(rowIndex, rid, ridText) {
         if (quoteCache[rid] !== undefined) {
             var c = quoteCache[rid]
-            setRow(rowIndex, { quoteWho: c.who, quoteText: c.text })
+            setRow(rowIndex, { quoteWho: c.who, quoteText: c.text,
+                               quoteImgUrl: c.imgUrl || "",
+                               quoteImgFile: c.imgFile || "" })
             return
         }
+        // reply 段自带的预览文字（NapCat 实时附带，不依赖 get_msg）
+        var inlineText = ridText && ridText.length > 0 ? ridText : ""
+        if (inlineText.length > 40)
+            inlineText = inlineText.substring(0, 40) + "…"
         var e = ob.sendAction("get_msg",
                               JSON.stringify({ message_id: parseInt(rid) }))
         pending[e] = function(ok, data) {
             if (!ok) return
             var d = JSON.parse(data)
             var who = d.sender && d.sender.nickname ? d.sender.nickname : "?"
-            var txt = cleanCQ(d.raw_message)
-            if (txt.length > 40) txt = txt.substring(0, 40) + "…"
+            var txt = inlineText
+            if (txt.length === 0) {
+                txt = cleanCQ(d.raw_message)
+                if (txt.length > 40) txt = txt.substring(0, 40) + "…"
+                // 兜底：群消息 raw_message 常为空，从 message 段拼文字
+                if (txt.length === 0 && d.message && d.message.length !== undefined) {
+                    var parts = []
+                    for (var ti in d.message) {
+                        if (d.message[ti].type === "text") {
+                            var td = d.message[ti].data
+                            parts.push(td && td.text ? td.text : "")
+                        }
+                    }
+                    txt = parts.join(" ").trim()
+                    if (txt.length > 40) txt = txt.substring(0, 40) + "…"
+                }
+            }
             // 原消息是图片 → 提取图片段供引用块渲染预览
             var qimg = null
             if (d.message && d.message.length !== undefined) {
@@ -224,7 +287,6 @@ Page {
                     }
                 }
             }
-            if (qimg) txt = ""
             quoteCache[rid] = { who: who, text: txt,
                                 imgUrl: qimg ? qimg.url : "",
                                 imgFile: qimg ? qimg.file : "" }
@@ -240,7 +302,7 @@ Page {
         try { arr = JSON.parse(imagesJson) } catch (e) { return }
         for (var i in arr) {
             if (arr[i].isReply && arr[i].rid.length > 0)
-                resolveQuote(rowIndex, arr[i].rid)
+                resolveQuote(rowIndex, arr[i].rid, arr[i].ridText || "")
         }
     }
 
@@ -286,7 +348,8 @@ Page {
                 var visImgs2 = []
                 for (var rj in sp.images) {
                     if (sp.images[rj].isReply)
-                        rowReplies.push(sp.images[rj].rid)
+                        rowReplies.push({ rid: sp.images[rj].rid,
+                                          ridText: sp.images[rj].ridText || "" })
                     else
                         visImgs2.push(sp.images[rj])
                 }
@@ -303,7 +366,8 @@ Page {
                 })
                 var newIdx = listModel.count - 1
                 for (var qi in rowReplies)
-                    resolveQuote(newIdx, rowReplies[qi])
+                    resolveQuote(newIdx, rowReplies[qi].rid,
+                                 rowReplies[qi].ridText || "")
             }
             scrollToBottom()
         }
@@ -318,6 +382,13 @@ Page {
                 cb(ok, dataJson)
             }
         }
+        onFileDownloadDone: {
+            if (page.dlPending[token] !== undefined) {
+                var cb2 = page.dlPending[token]
+                delete page.dlPending[token]
+                cb2(path, ok)
+            }
+        }
         onEventReceived: {
             var pk
             try { pk = JSON.parse(packet) } catch (e) { return }
@@ -330,7 +401,8 @@ Page {
             var visImgs = []
             for (var ri in imgs) {
                 if (imgs[ri].isReply)
-                    replyIds.push(imgs[ri].rid)
+                    replyIds.push({ rid: imgs[ri].rid,
+                                    ridText: imgs[ri].ridText || "" })
                 else
                     visImgs.push(imgs[ri])
             }
@@ -353,7 +425,8 @@ Page {
                                quoteImgUrl: "", quoteImgFile: "" })
             var newRow = listModel.count - 1
             for (var qi in replyIds)
-                resolveQuote(newRow, replyIds[qi])
+                resolveQuote(newRow, replyIds[qi].rid,
+                             replyIds[qi].ridText || "")
             if (hub)
                 hub.markRead(targetKey)
             scrollToBottom()
@@ -418,6 +491,7 @@ Page {
                     anchors.fill: parent
                     onPressAndHold: {
                         page.menuMid = model.mid
+                        page.menuMine = model.mine
                         page.menuWho = model.who
                         page.menuText = model.text
                         page.bubbleMenuOpen = true
@@ -447,8 +521,10 @@ Page {
                     }
 
                     Rectangle {
+                        id: quoteBlock
                         visible: model.quoteWho.length > 0
-                        width: parent.width
+                        width: Math.min(listView.width * 0.78
+                                        - 2 * Theme.paddingLarge, 240)
                         height: qcol.height + Theme.paddingSmall
                         radius: 4
                         color: Theme.rgba(Theme.secondaryColor, 0.18)
@@ -463,6 +539,17 @@ Page {
                                 font.pixelSize: Theme.fontSizeTiny
                                 color: Theme.highlightColor
                                 text: model.quoteWho
+                            }
+
+                            // 被引用的文字内容
+                            Label {
+                                visible: model.quoteText.length > 0
+                                width: quoteBlock.width - 2 * Theme.paddingSmall
+                                font.pixelSize: Theme.fontSizeTiny
+                                color: Theme.secondaryColor
+                                text: model.quoteText
+                                wrapMode: Text.WrapAnywhere
+                                maximumLineCount: 2
                             }
 
                             // 被引用的图片：图床直链失败自动换本地缓存
@@ -517,6 +604,9 @@ Page {
                                       .createObject(imgFlow, {
                                           fname: arr[i].name,
                                           fid: arr[i].fid,
+                                          furl: arr[i].url ? arr[i].url : "",
+                                          gid: arr[i].gid ? arr[i].gid : "",
+                                          busid: arr[i].busid ? arr[i].busid : "",
                                           pageRef: page
                                       })
                                 } else if (arr[i].video) {
@@ -589,7 +679,7 @@ Page {
                         }
                     }
                     Button {
-                        visible: page.menuMid > 0
+                        visible: page.menuMid !== 0
                         text: qsTr("Reply")
                         onClicked: {
                             page.replyTo(page.menuMid,

@@ -64,6 +64,35 @@ bool OneBotBridge::copyFile(const QString &src, const QString &dst)
     return QFile::copy(src, dst);
 }
 
+QString OneBotBridge::downloadFile(const QString &url,
+                                   const QString &destPath)
+{
+    const QString token = QStringLiteral("d%1").arg(++m_echoSeq);
+    QNetworkRequest req;
+    req.setUrl(QUrl(url));
+    QNetworkReply *rep = m_nam.get(req);
+    connect(rep, &QNetworkReply::finished,
+            this, [this, rep, token, destPath]() {
+        rep->deleteLater();
+        const QByteArray data = rep->readAll();
+        const bool ok = rep->error() == QNetworkReply::NoError;
+        if (ok) {
+            QDir().mkpath(QFileInfo(destPath).absolutePath());
+            QFile f(destPath);
+            if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+                emit fileDownloadDone(token, false, destPath);
+            else {
+                f.write(data);
+                f.close();
+                emit fileDownloadDone(token, true, destPath);
+            }
+        } else {
+            emit fileDownloadDone(token, false, destPath);
+        }
+    });
+    return token;
+}
+
 QString OneBotBridge::sha256Hex(const QString &s)
 {
     return QString::fromLatin1(QCryptographicHash::hash(
@@ -225,8 +254,18 @@ void OneBotBridge::onTextMessage(const QString &message)
     const QString post = m.value(QStringLiteral("post_type")).toString();
     // "message_sent" covers messages sent by ourselves from OTHER
     // clients (phone QQ etc.) when reportSelfMessage is enabled
-    if (post != QLatin1String("message")
-            && post != QLatin1String("message_sent"))
+    const bool isMsg = post == QLatin1String("message")
+                       || post == QLatin1String("message_sent");
+    // a file uploaded to the group file storage arrives as a notice event
+    // (not a message), which the message parsing below cannot handle
+    const bool isGroupUpload = post == QLatin1String("notice")
+            && m.value(QStringLiteral("notice_type")).toString()
+                    == QLatin1String("group_upload");
+    if (isGroupUpload) {
+        handleGroupUpload(m);
+        return;
+    }
+    if (!isMsg)
         return;  // meta/notice/request events are not shown in v1 UI
 
     const QString kind = m.value(QStringLiteral("message_type")).toString()
@@ -280,13 +319,15 @@ void OneBotBridge::onTextMessage(const QString &message)
                 images.append(fc);
             } else if (st == QLatin1String("file")) {
                 QJsonObject fil;
-                fil.insert(QStringLiteral("filemsg"), true);
+                fil.insert(QStringLiteral("isFile"), true);
                 QString nm = sd.contains(QStringLiteral("name"))
                         ? sd.value(QStringLiteral("name")).toString()
                         : sd.value(QStringLiteral("file")).toString();
                 fil.insert(QStringLiteral("name"), nm);
                 fil.insert(QStringLiteral("fid"),
                            sd.value(QStringLiteral("file_id")).toString());
+                fil.insert(QStringLiteral("url"),
+                           sd.value(QStringLiteral("url")).toString());
                 images.append(fil);
             }
         }
@@ -320,6 +361,43 @@ void OneBotBridge::onTextMessage(const QString &message)
                   m.value(QStringLiteral("user_id")).toDouble())));
     packet.insert(QStringLiteral("mid"),
                   m.value(QStringLiteral("message_id")).toString());
+    emit eventReceived(QString::fromUtf8(
+        QJsonDocument(packet).toJson(QJsonDocument::Compact)));
+}
+
+// a "group_upload" notice reports a file pushed into the group's shared
+// file storage (not sent as a chat attachment). Synthesize a message-format
+// packet so the QML side can render a (tappable) file tile for it.
+void OneBotBridge::handleGroupUpload(const QJsonObject &m)
+{
+    const QJsonObject file = m.value(QStringLiteral("file")).toObject();
+    const QString fid = file.value(QStringLiteral("id")).toString();
+    const QString name = file.value(QStringLiteral("name")).toString();
+
+    QJsonObject tile;
+    tile.insert(QStringLiteral("isFile"), true);
+    tile.insert(QStringLiteral("name"), name.isEmpty()
+                   ? QStringLiteral("file") : name);
+    tile.insert(QStringLiteral("fid"), fid);
+    tile.insert(QStringLiteral("gid"), QString::number(static_cast<qlonglong>(
+        m.value(QStringLiteral("group_id")).toDouble())));
+    tile.insert(QStringLiteral("busid"), file.value(QStringLiteral("busid")).toString());
+
+    QJsonObject packet;
+    packet.insert(QStringLiteral("where"),
+                  QStringLiteral("群%1").arg(static_cast<qlonglong>(
+                      m.value(QStringLiteral("group_id")).toDouble())));
+    packet.insert(QStringLiteral("who"),
+                  m.value(QStringLiteral("user_id")).toString());
+    packet.insert(QStringLiteral("text"), QString());
+    QJsonArray imgs;
+    imgs.append(tile);
+    packet.insert(QStringLiteral("imagesJson"),
+                  QString::fromUtf8(QJsonDocument(imgs).toJson(
+                      QJsonDocument::Compact)));
+    packet.insert(QStringLiteral("uid"), QString::number(static_cast<qlonglong>(
+                  m.value(QStringLiteral("user_id")).toDouble())));
+    packet.insert(QStringLiteral("mid"), QStringLiteral("0"));
     emit eventReceived(QString::fromUtf8(
         QJsonDocument(packet).toJson(QJsonDocument::Compact)));
 }

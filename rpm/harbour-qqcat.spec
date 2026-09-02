@@ -1,7 +1,7 @@
 Name:       harbour-qqcat
 Summary:    OneBot11 QQ client for Sailfish OS
 Version:    1.0.0
-Release:    1
+Release:    3
 License:    MIT
 URL:        https://openrepos.net/content/qqbridge
 Source0:    %{name}-%{version}.tar.bz2
@@ -70,6 +70,16 @@ install -Dm 644 icons/86x86/harbour-qqcat.png \
 %{_datarootdir}/icons/hicolor/86x86/apps/harbour-qqcat.png
 
 %changelog
+* Tue Sep 2 2026 qqbridge contributors 1.0.0-3
+- Fix group-chat quoted text not displaying (use inline reply segment text)
+- Fix self-sent reply bubble width collapsing (break binding loop)
+- Fix quoted text + image coexisting in quote block
+
+* Sun Aug 30 2026 qqbridge contributors 1.0.0-2
+- Fix group-chat reply/quote button vanishing on large message ids
+- Correct "@member" visibility for own messages
+- Group file upload tiles + remote file download support
+
 * Mon Aug 25 2026 qqbridge contributors 1.0.0-1
 - Initial OpenRepos release
 - QR login, conversation list, group/private chat

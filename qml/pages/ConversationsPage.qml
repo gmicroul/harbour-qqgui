@@ -66,7 +66,12 @@ Page {
                            unread: all[j].unread })
     }
 
+    function oneLine(s) {
+        return s ? String(s).replace(/[\r\n]+/g, " ") : s
+    }
+
     function touchConv(key, who, text, mine) {
+        text = oneLine(text)
         // 横幅通知：别人的消息才提醒
         if (!mine) {
             msgNotify.previewSummary = nameFor(key, who)
@@ -444,7 +449,9 @@ Page {
                 text: model.preview
                 color: Theme.secondaryColor
                 font.pixelSize: Theme.fontSizeExtraSmall
+                maximumLineCount: 1
                 truncationMode: TruncationMode.Fade
+                verticalAlignment: Text.AlignVCenter
             }
 
             onClicked: page.openConv(model.key)

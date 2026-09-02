@@ -11,11 +11,13 @@ Item {
 
     property string fname: ""
     property string fid: ""
+    property string furl: ""
+    property string gid: ""
+    property string busid: ""
     property var pageRef
-                                       "fid=", fid)
 
     function saveFile() {
-        pageRef.resolveFile(fid, function(localPath, saved) {
+        pageRef.resolveFile(fid, furl, gid, busid, function(localPath, saved) {
             pageRef.appendMsg("sys", "",
                               saved ? "文件已保存: Downloads/qqcat/"
                                       + localPath : "文件下载失败")
