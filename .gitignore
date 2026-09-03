@@ -18,3 +18,4 @@ rpm/*-build/
 *.orig
 *~
 *.rpm
+backup
