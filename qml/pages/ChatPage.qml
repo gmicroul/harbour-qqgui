@@ -1,6 +1,7 @@
 import QtQuick 2.2
 import Sailfish.Silica 1.0
 import Qqcat 1.0
+import "../components"
 
 Page {
     id: page
@@ -433,28 +434,103 @@ Page {
         }
     }
 
-    SilicaListView {
-        id: listView
-        anchors.fill: parent
-        anchors.bottomMargin: composer.height
-        model: ListModel { id: listModel }
+    // ===== Glass UI =====
+    GlassBackground { anchors.fill: parent }
 
-        VerticalScrollDecorator {}
-
-        PullDownMenu {
-            MenuItem {
-                text: qsTr("Load history")
-                onClicked: page.loadHistory()
+    Rectangle {
+        id: headerBar
+        width: parent.width
+        height: 84
+        color: Qt.rgba(0.09,0.11,0.22,0.52)
+        border.color: Qt.rgba(1,1,1,0.10)
+        border.width: 1
+        z: 2
+        clip: false
+        Row {
+            anchors.left: parent.left
+            anchors.leftMargin: Theme.paddingSmall
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Theme.paddingSmall
+            IconButton {
+                icon.source: "image://theme/icon-m-back"
+                icon.color: "white"
+                onClicked: pageStack.pop()
             }
-            MenuItem {
-                text: qsTr("Clear view")
-                onClicked: listModel.clear()
+            Rectangle {
+                width: 40; height: 40; radius: 12
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: Qt.rgba(1,1,1,0.08)
+                border.color: Qt.rgba(1,1,1,0.12); border.width: 1
+                Image {
+                    anchors.fill: parent
+                    source: isGroup ? "https://p.qlogo.cn/gh/" + targetId + "/" + targetId + "/100" : "https://q.qlogo.cn/headimg_dl?dst_uin=" + targetId + "&spec=100"
+                    asynchronous: true; cache: true; fillMode: Image.PreserveAspectCrop; smooth: true
+                }
+            }
+            Column {
+                anchors.top: parent.top
+                anchors.topMargin: 14
+                spacing: 3
+                width: page.width - 148
+                Label {
+                    width: parent.width
+                    text: page.targetTitle
+                    color: "white"
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    truncationMode: TruncationMode.Fade
+                    elide: Text.ElideRight
+                    lineHeight: 1.1
+                }
+                Label {
+                    width: parent.width
+                    text: isGroup ? qsTr("Group") + " · " + targetId : qsTr("Private") + " · " + targetId
+                    color: Qt.rgba(1,1,1,0.45)
+                    font.pixelSize: Theme.fontSizeTiny
+                    truncationMode: TruncationMode.Fade
+                    elide: Text.ElideRight
+                    lineHeight: 1.0
+                }
             }
         }
+        Row {
+            anchors.right: parent.right
+            anchors.rightMargin: Theme.horizontalPageMargin
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Theme.paddingSmall
+            Rectangle {
+                width: 56; height: 56; radius: 28
+                color: refreshMouse.pressed ? Qt.rgba(1,1,1,0.18) : Qt.rgba(1,1,1,0.10)
+                border.color: Qt.rgba(1,1,1,0.16)
+                border.width: 1
+                Image {
+                    anchors.centerIn: parent
+                    width: 28; height: 28
+                    source: "image://theme/icon-m-refresh"
+                    smooth: true
+                }
+                MouseArea { id: refreshMouse; anchors.fill: parent; onClicked: page.loadHistory() }
+            }
+        }
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1,1,1,0.07) }
+    }
 
-        header: Column {
-            width: listView.width
-            PageHeader { title: page.targetTitle }
+    SilicaListView {
+        id: listView
+        anchors.top: headerBar.bottom
+        anchors.bottom: composer.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        clip: true
+        model: ListModel { id: listModel }
+        spacing: Theme.paddingSmall
+        topMargin: Theme.paddingMedium
+        bottomMargin: Theme.paddingMedium
+        VerticalScrollDecorator {}
+        PullDownMenu {
+            MenuItem { text: qsTr("Load history"); onClicked: page.loadHistory() }
+            MenuItem { text: qsTr("Clear view"); onClicked: listModel.clear() }
         }
 
         delegate: Item {
@@ -467,7 +543,7 @@ Page {
                 anchors.top: parent.top
                 anchors.topMargin: Theme.paddingSmall
                 font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryColor
+                color: Qt.rgba(1,1,1,0.62)
                 text: "· " + model.text
             }
 
@@ -476,16 +552,21 @@ Page {
                 visible: model.kind !== "sys"
                 anchors.top: parent.top
                 anchors.topMargin: Theme.paddingSmall
-                x: model.mine
-                   ? parent.width - width - Theme.horizontalPageMargin
-                   : Theme.horizontalPageMargin
-                width: Math.min(body.width + 2 * Theme.paddingLarge,
-                                parent.width * 0.78)
+                x: model.mine ? parent.width - width - 14 : Theme.horizontalPageMargin
+                width: Math.min(body.width + 2 * Theme.paddingLarge, parent.width * 0.78)
                 height: body.height + 2 * Theme.paddingSmall
-                radius: Theme.paddingSmall
-                color: model.mine
-                       ? Theme.rgba(Theme.highlightColor, 0.32)
-                       : Theme.rgba(Theme.secondaryColor, 0.13)
+                radius: 18
+                color: model.mine ? Qt.rgba(0.48,0.56,1.0,0.18) : Qt.rgba(1,1,1,0.08)
+                border.color: model.mine ? Qt.rgba(0.66,0.73,1.0,0.32) : Qt.rgba(1,1,1,0.13)
+                border.width: 1
+                Rectangle {
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 1
+                    radius: parent.radius
+                    color: Qt.rgba(1,1,1, model.mine ? 0.22 : 0.14)
+                }
 
                 MouseArea {
                     anchors.fill: parent
@@ -506,124 +587,96 @@ Page {
 
                     Item { width: 1; height: Theme.paddingSmall / 2 }
 
-                    Label {
-                        visible: !model.mine
-                        font.pixelSize: Theme.fontSizeExtraSmall
-                        color: Theme.highlightColor
-                        text: isGroup ? (model.who + " ▸") : model.who
-
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: isGroup && model.uid > 0
-                                     && model.uid !== page.selfId
-                            onClicked: page.openPrivate(model.uid)
+                    Row {
+                        spacing: 6
+                        Rectangle {
+                            width: 20; height: 20; radius: 6
+                            clip: true
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: Qt.rgba(1,1,1,0.08)
+                            border.color: Qt.rgba(1,1,1,0.12); border.width: 1
+                            Image {
+                                anchors.fill: parent
+                                source: {
+                                    var u = model.mine ? page.selfId : model.uid
+                                    return u ? "https://q.qlogo.cn/headimg_dl?dst_uin=" + u + "&spec=100" : ""
+                                }
+                                asynchronous: true; cache: true; fillMode: Image.PreserveAspectCrop; smooth: true
+                            }
+                        }
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.pixelSize: Theme.fontSizeExtraSmall
+                            color: model.mine ? Qt.rgba(1,1,1,0.92) : Qt.rgba(0.72,0.78,1.0,0.95)
+                            font.bold: true
+                            text: model.mine ? "我" : (isGroup ? (model.who + " ▸") : model.who)
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: isGroup && model.uid > 0 && model.uid !== page.selfId
+                                onClicked: page.openPrivate(model.uid)
+                            }
                         }
                     }
 
                     Rectangle {
                         id: quoteBlock
                         visible: model.quoteWho.length > 0
-                        width: Math.min(listView.width * 0.78
-                                        - 2 * Theme.paddingLarge, 240)
+                        width: Math.min(listView.width * 0.78 - 2 * Theme.paddingLarge, 240)
                         height: qcol.height + Theme.paddingSmall
-                        radius: 4
-                        color: Theme.rgba(Theme.secondaryColor, 0.18)
-
+                        radius: 10
+                        color: Qt.rgba(1,1,1,0.08)
+                        border.color: Qt.rgba(1,1,1,0.09)
+                        border.width: 1
+                        Rectangle { width: 3; height: parent.height - 12; x: 6; y: 6; radius: 2; color: model.mine ? Qt.rgba(0.66,0.73,1.0,0.9) : Qt.rgba(1,1,1,0.32) }
                         Column {
                             id: qcol
                             x: Theme.paddingSmall
                             y: Theme.paddingSmall
-                            spacing: 0
-
-                            Label {
-                                font.pixelSize: Theme.fontSizeTiny
-                                color: Theme.highlightColor
-                                text: model.quoteWho
-                            }
-
-                            // 被引用的文字内容
-                            Label {
-                                visible: model.quoteText.length > 0
-                                width: quoteBlock.width - 2 * Theme.paddingSmall
-                                font.pixelSize: Theme.fontSizeTiny
-                                color: Theme.secondaryColor
-                                text: model.quoteText
-                                wrapMode: Text.WrapAnywhere
-                                maximumLineCount: 2
-                            }
-
-                            // 被引用的图片：图床直链失败自动换本地缓存
+                            spacing: 2
+                            Label { font.pixelSize: Theme.fontSizeTiny; font.bold: true; color: Qt.rgba(0.72,0.78,1.0,1); text: model.quoteWho }
+                            Label { visible: model.quoteText.length > 0; width: quoteBlock.width - 2 * Theme.paddingSmall; font.pixelSize: Theme.fontSizeTiny; color: Qt.rgba(1,1,1,0.58); text: model.quoteText; wrapMode: Text.WrapAnywhere; maximumLineCount: 2 }
                             Image {
                                 visible: model.quoteImgUrl.length > 0
-                                width: 170
-                                height: 120
+                                width: 160
+                                height: 110
                                 fillMode: Image.PreserveAspectFit
                                 asynchronous: true
-                property string localSrc: ""
-                source: localSrc.length > 0 ? localSrc
-                                            : model.quoteImgUrl
-                onStatusChanged: {
-                    if (status === Image.Error && !localSrc.length)
-                        page.resolveImage(model.quoteImgFile, "",
-                                          function(fp) {
-                                              if (fp.indexOf("file://") === 0)
-                                                  localSrc = fp
-                                          })
-                }
+                                property string localSrc: ""
+                                source: localSrc.length > 0 ? localSrc : model.quoteImgUrl
+                                onStatusChanged: {
+                                    if (status === Image.Error && !localSrc.length)
+                                        page.resolveImage(model.quoteImgFile, "", function(fp) {
+                                            if (fp.indexOf("file://") === 0) localSrc = fp
+                                        })
+                                }
                             }
                         }
                     }
 
                     Label {
                         visible: model.text.length > 0
-                        width: Math.min(implicitWidth,
-                                        listView.width * 0.78
-                                        - 2 * Theme.paddingLarge)
+                        width: Math.min(implicitWidth, listView.width * 0.78 - 2 * Theme.paddingLarge)
                         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                         font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.primaryColor
+                        color: "white"
                         text: model.text
                     }
 
                     Flow {
                         id: imgFlow
                         spacing: Theme.paddingSmall
-
                         Component.onCompleted: {
                             var arr = []
-                            try { arr = JSON.parse(model.imagesJson) }
-                            catch (e) { arr = [] }
+                            try { arr = JSON.parse(model.imagesJson) } catch (e) { arr = [] }
                             for (var i = 0; i < arr.length; i++) {
                                 if (arr[i].faceId !== undefined) {
-                                    Qt.createComponent("FaceTile.qml")
-                                      .createObject(imgFlow, {
-                                          faceId: arr[i].faceId
-                                      })
+                                    Qt.createComponent("FaceTile.qml").createObject(imgFlow, { faceId: arr[i].faceId })
                                 } else if (arr[i].isFile) {
-                                    Qt.createComponent("FileTile.qml")
-                                      .createObject(imgFlow, {
-                                          fname: arr[i].name,
-                                          fid: arr[i].fid,
-                                          furl: arr[i].url ? arr[i].url : "",
-                                          gid: arr[i].gid ? arr[i].gid : "",
-                                          busid: arr[i].busid ? arr[i].busid : "",
-                                          pageRef: page
-                                      })
+                                    Qt.createComponent("FileTile.qml").createObject(imgFlow, { fname: arr[i].name, fid: arr[i].fid, furl: arr[i].url ? arr[i].url : "", gid: arr[i].gid ? arr[i].gid : "", busid: arr[i].busid ? arr[i].busid : "", pageRef: page })
                                 } else if (arr[i].video) {
-                                    Qt.createComponent("VideoTile.qml")
-                                      .createObject(imgFlow, {
-                                          vidUrl: arr[i].url,
-                                          vidFile: arr[i].file,
-                                          pageRef: page
-                                      })
-                                } else if (page.autoIm()
-                                           && (arr[i].file || arr[i].url)) {
-                                    Qt.createComponent("ImageTile.qml")
-                                      .createObject(imgFlow, {
-                                          imgUrl: arr[i].url,
-                                          imgFile: arr[i].file,
-                                          pageRef: page
-                                      })
+                                    Qt.createComponent("VideoTile.qml").createObject(imgFlow, { vidUrl: arr[i].url, vidFile: arr[i].file, pageRef: page })
+                                } else if (page.autoIm() && (arr[i].file || arr[i].url)) {
+                                    Qt.createComponent("ImageTile.qml").createObject(imgFlow, { imgUrl: arr[i].url, imgFile: arr[i].file, pageRef: page })
                                 }
                             }
                         }
@@ -631,72 +684,57 @@ Page {
                 }
             }
         }
-
-        ViewPlaceholder {
-            enabled: listModel.count === 0
-            text: page.targetTitle
-            hintText: qsTr("no messages yet — say hi!")
-        }
+        ViewPlaceholder { enabled: listModel.count === 0; text: page.targetTitle; hintText: qsTr("no messages yet — say hi!") }
     }
 
-    DockedPanel {
+    Rectangle {
         id: composer
-        open: true
         width: parent.width
-        height: innerCol.height + 2 * Theme.paddingMedium
+        height: innerCol.height + 20
+        anchors.bottom: parent.bottom
+        color: Qt.rgba(0.10,0.12,0.24,0.58)
+        border.color: Qt.rgba(1,1,1,0.11)
+        border.width: 1
+        Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Qt.rgba(1,1,1,0.10) }
 
         Column {
             id: innerCol
-            width: parent.width - Theme.paddingMedium * 2
+            width: parent.width - 20
             anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Theme.paddingSmall
+            anchors.top: parent.top
+            anchors.topMargin: 10
+            spacing: 8
 
-            EmojiPanel {
-                id: emojiPanel
-                visible: emojiOpen
-                width: parent.width
-                onEmojiPicked: inputField.text = inputField.text + emo
-            }
+            EmojiPanel { id: emojiPanel; visible: emojiOpen; width: parent.width; onEmojiPicked: inputField.text = inputField.text + emo }
 
-            // 长按消息后的操作条
             Rectangle {
                 visible: bubbleMenuOpen
                 width: parent.width
-                height: menuRow.height + Theme.paddingSmall * 2
-                radius: Theme.paddingSmall
-                color: Theme.rgba(Theme.highlightBackgroundColor, 0.25)
-
+                height: menuRow.height + 18
+                radius: 16
+                color: Qt.rgba(1,1,1,0.09)
+                border.color: Qt.rgba(1,1,1,0.14)
+                border.width: 1
                 Row {
                     id: menuRow
+                    width: parent.width - 32
                     anchors.centerIn: parent
-                    spacing: Theme.paddingMedium
-
-                    Button {
-                        text: qsTr("Copy")
-                        onClicked: {
-                            ob.copyText(page.menuText)
-                            page.bubbleMenuOpen = false
-                        }
+                    spacing: (width - 74 -74 -84 -44)/3
+                    Rectangle { height: 40; radius: 20; width: 74; color: Qt.rgba(1,1,1,0.10); border.color: Qt.rgba(1,1,1,0.14); border.width: 1
+                        Label { anchors.centerIn: parent; text: qsTr("Copy"); font.pixelSize: Theme.fontSizeSmall; color: "white" }
+                        MouseArea { anchors.fill: parent; onClicked: { ob.copyText(page.menuText); page.bubbleMenuOpen = false } }
                     }
-                    Button {
-                        visible: page.menuMid !== 0
-                        text: qsTr("Reply")
-                        onClicked: {
-                            page.replyTo(page.menuMid,
-                                         page.menuWho, page.menuText)
-                            page.bubbleMenuOpen = false
-                        }
+                    Rectangle { height: 40; radius: 20; width: 74; color: page.menuMid !== 0 ? Qt.rgba(0.48,0.56,1.0,0.22) : Qt.rgba(1,1,1,0.05); border.color: page.menuMid !== 0 ? Qt.rgba(0.66,0.73,1.0,0.32) : Qt.rgba(1,1,1,0.08); border.width: 1; opacity: page.menuMid !== 0 ? 1 : 0.35; enabled: page.menuMid !== 0
+                        Label { anchors.centerIn: parent; text: qsTr("Reply"); font.pixelSize: Theme.fontSizeSmall; color: "white"; opacity: parent.enabled ? 1 : 0.4 }
+                        MouseArea { anchors.fill: parent; enabled: parent.enabled; onClicked: { page.replyTo(page.menuMid, page.menuWho, page.menuText); page.bubbleMenuOpen = false } }
                     }
-                    Button {
-                        visible: isGroup && !page.menuMine
-                                 && page.menuWho.length > 0
-                        text: "@" + (page.menuWho || "").substring(0, 6)
-                        onClicked: {
-                            inputField.text =
-                                inputField.text + "@" + page.menuWho + " "
-                            inputField.focus = true
-                            page.bubbleMenuOpen = false
-                        }
+                    Rectangle { height: 40; radius: 20; width: 84; color: (isGroup && !page.menuMine && page.menuWho.length > 0) ? Qt.rgba(1,1,1,0.10) : Qt.rgba(1,1,1,0.05); border.color: (isGroup && !page.menuMine && page.menuWho.length > 0) ? Qt.rgba(1,1,1,0.14) : Qt.rgba(1,1,1,0.08); border.width: 1; opacity: (isGroup && !page.menuMine && page.menuWho.length > 0) ? 1 : 0.35; enabled: isGroup && !page.menuMine && page.menuWho.length > 0
+                        Label { anchors.centerIn: parent; text: "@" + (page.menuWho || "").substring(0, 6); font.pixelSize: Theme.fontSizeSmall; color: "white"; opacity: parent.enabled ? 1 : 0.4 }
+                        MouseArea { anchors.fill: parent; enabled: parent.enabled; onClicked: { inputField.text = inputField.text + "@" + page.menuWho + " "; inputField.focus = true; page.bubbleMenuOpen = false } }
+                    }
+                    Rectangle { height: 40; radius: 20; width: 44; color: Qt.rgba(1,0.3,0.3,0.16); border.color: Qt.rgba(1,0.4,0.4,0.22); border.width: 1
+                        Label { anchors.centerIn: parent; text: "✕"; color: Qt.rgba(1,0.6,0.6,1); font.pixelSize: Theme.fontSizeSmall }
+                        MouseArea { anchors.fill: parent; onClicked: page.bubbleMenuOpen = false }
                     }
                 }
             }
@@ -704,172 +742,91 @@ Page {
             Row {
                 visible: plusOpen
                 width: parent.width
-                spacing: Theme.paddingMedium
-
-                Button {
-                    width: (parent.width - parent.spacing) / 2
-                    text: qsTr("Image")
-                    onClicked: openAttach("/home/defaultuser/Pictures")
+                spacing: 8
+                Rectangle { width: (parent.width - 8)/2; height: 38; radius: 12; color: Qt.rgba(1,1,1,0.08); border.color: Qt.rgba(1,1,1,0.12); border.width: 1
+                    Label { anchors.centerIn: parent; text: qsTr("Image"); color: "white"; font.pixelSize: Theme.fontSizeSmall }
+                    MouseArea { anchors.fill: parent; onClicked: openAttach("/home/defaultuser/Pictures") }
                 }
-                Button {
-                    width: (parent.width - parent.spacing) / 2
-                    text: qsTr("File")
-                    onClicked: openAttach("/home/defaultuser/Downloads")
+                Rectangle { width: (parent.width - 8)/2; height: 38; radius: 12; color: Qt.rgba(1,1,1,0.08); border.color: Qt.rgba(1,1,1,0.12); border.width: 1
+                    Label { anchors.centerIn: parent; text: qsTr("File"); color: "white"; font.pixelSize: Theme.fontSizeSmall }
+                    MouseArea { anchors.fill: parent; onClicked: openAttach("/home/defaultuser/Downloads") }
                 }
             }
 
             Row {
                 visible: replyTarget !== null
                 width: parent.width
-                spacing: Theme.paddingSmall
-
-                Rectangle {
-                    width: 4
-                    height: replyCol.height
-                    color: Theme.highlightColor
-                }
+                spacing: 8
+                Rectangle { width: 3; height: replyCol.height; radius: 2; color: "#7c8bff" }
                 Column {
                     id: replyCol
-                    width: parent.width - cancelBtn.width
-                           - 4 * Theme.paddingSmall
-                    Label {
-                        font.pixelSize: Theme.fontSizeExtraSmall
-                        color: Theme.highlightColor
-                        text: replyTarget
-                              ? qsTr("reply to ") + replyTarget.who : ""
-                    }
-                    Label {
-                        width: parent.width
-                        font.pixelSize: Theme.fontSizeTiny
-                        color: Theme.secondaryColor
-                        truncationMode: TruncationMode.Fade
-                        text: replyTarget ? replyTarget.snippet : ""
-                    }
+                    width: parent.width - cancelBtn.width - 16
+                    Label { font.pixelSize: Theme.fontSizeExtraSmall; color: "#9aa3ff"; text: replyTarget ? qsTr("reply to ") + replyTarget.who : "" }
+                    Label { width: parent.width; font.pixelSize: Theme.fontSizeTiny; color: Qt.rgba(1,1,1,0.52); truncationMode: TruncationMode.Fade; text: replyTarget ? replyTarget.snippet : "" }
                 }
-                IconButton {
-                    id: cancelBtn
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Theme.itemSizeExtraSmall
-                    height: width
-                    icon.source: "image://theme/icon-m-clear"
-                    onClicked: replyTarget = null
-                }
+                IconButton { id: cancelBtn; anchors.verticalCenter: parent.verticalCenter; width: 32; height: 32; icon.source: "image://theme/icon-m-clear"; icon.color: "white"; onClicked: replyTarget = null }
             }
 
             Row {
                 id: sendRow
                 width: parent.width
-                spacing: Theme.paddingSmall
-
+                spacing: 8
                 Rectangle {
-                    id: emojiChip
-                    width: Theme.itemSizeSmall * 0.85
-                    height: Theme.itemSizeSmall * 0.85
-                    radius: Theme.paddingSmall
-                    color: emojiOpen
-                           ? Theme.rgba(Theme.highlightColor, 0.35)
-                           : "transparent"
-
-                    Label {
-                        anchors.centerIn: parent
-                        font.pixelSize: Theme.fontSizeMedium
-                        text: "😊"
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            emojiOpen = !emojiOpen
-                            plusOpen = false
-                        }
-                    }
+                    id: emojiChip; width: 52; height: 52; radius: 14
+                    color: emojiOpen ? Qt.rgba(0.48,0.56,1.0,0.22) : Qt.rgba(1,1,1,0.08)
+                    border.color: emojiOpen ? Qt.rgba(0.66,0.73,1.0,0.32) : Qt.rgba(1,1,1,0.12)
+                    border.width: 1
+                    Label { anchors.centerIn: parent; font.pixelSize: Theme.fontSizeLarge; text: "😊" }
+                    MouseArea { anchors.fill: parent; onClicked: { emojiOpen = !emojiOpen; plusOpen = false } }
                 }
-
                 Rectangle {
-                    id: plusChip
-                    width: Theme.itemSizeSmall * 0.85
-                    height: Theme.itemSizeSmall * 0.85
-                    radius: Theme.paddingSmall
-                    color: plusOpen
-                           ? Theme.rgba(Theme.highlightColor, 0.35)
-                           : "transparent"
-
-                    Label {
-                        anchors.centerIn: parent
-                        font.pixelSize: Theme.fontSizeLarge
-                        color: plusOpen ? Theme.highlightColor
-                                        : Theme.secondaryColor
-                        text: "+"
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            plusOpen = !plusOpen
-                            emojiOpen = false
-                        }
-                    }
+                    id: plusChip; width: 52; height: 52; radius: 14
+                    color: plusOpen ? Qt.rgba(0.48,0.56,1.0,0.22) : Qt.rgba(1,1,1,0.08)
+                    border.color: plusOpen ? Qt.rgba(0.66,0.73,1.0,0.32) : Qt.rgba(1,1,1,0.12)
+                    border.width: 1
+                    Label { anchors.centerIn: parent; font.pixelSize: 28; color: plusOpen ? "#9aa3ff" : Qt.rgba(1,1,1,0.72); text: "+" }
+                    MouseArea { anchors.fill: parent; onClicked: { plusOpen = !plusOpen; emojiOpen = false } }
                 }
-
                 TextArea {
                     id: inputField
-                    width: parent.width - emojiChip.width - plusChip.width
-                           - sendButton.width - 3 * parent.spacing
-                    // grows with content: min 1 line, max ~3 lines
-                    height: Math.min(Math.max(implicitHeight,
-                                              Theme.itemSizeSmall * 0.9),
-                                     Theme.itemSizeSmall * 4.5)
-                    wrapMode: TextEdit.Wrap
+                    width: parent.width - emojiChip.width - plusChip.width - sendButton.width - 3 * parent.spacing
+                    height: Math.min(Math.max(implicitHeight, Theme.itemSizeSmall * 0.85), Theme.itemSizeSmall * 3.2)
+                    wrapMode: TextEdit.WrapAtWordBoundaryOrAnywhere
                     font.pixelSize: Theme.fontSizeSmall
+                    color: "white"
                     placeholderText: qsTr("message")
+                    placeholderColor: Qt.rgba(1,1,1,0.32)
+                    background: Rectangle {
+                        radius: 14
+                        color: Qt.rgba(1,1,1,0.08)
+                        border.color: inputField.activeFocus ? Qt.rgba(0.66,0.73,1.0,0.38) : Qt.rgba(1,1,1,0.12)
+                        border.width: 1
+                    }
                     EnterKey.enabled: text.trim().length > 0
                     EnterKey.onClicked: sendButton.doSend()
                 }
-
-                Button {
+                Rectangle {
                     id: sendButton
-                    width: Theme.itemSizeSmall * 1.05
-                    text: "\u27A4"
-                    enabled: inputField.text.trim().length > 0
-                    onClicked: doSend()
-
+                    width: 64; height: 52; radius: 16
+                    color: inputField.text.trim().length > 0 ? Qt.rgba(0.48,0.56,1.0,0.92) : Qt.rgba(1,1,1,0.10)
+                    border.color: inputField.text.trim().length > 0 ? Qt.rgba(1,1,1,0.18) : Qt.rgba(1,1,1,0.08)
+                    border.width: 1
+                    opacity: inputField.text.trim().length > 0 ? 1 : 0.6
+                    Label { anchors.centerIn: parent; text: "➤"; color: "white"; font.pixelSize: Theme.fontSizeLarge; font.bold: true }
+                    MouseArea { anchors.fill: parent; enabled: inputField.text.trim().length > 0; onClicked: sendButton.doSend() }
                     function doSend() {
-                        var txt = inputField.text
-                        var segs = []
-                        if (replyTarget)
-                            segs.push({ type: "reply",
-                                        data: { id: String(replyTarget.mid) } })
+                        var txt = inputField.text; var segs = []
+                        if (replyTarget) segs.push({ type: "reply", data: { id: String(replyTarget.mid) } })
                         segs.push({ type: "text", data: { text: txt } })
-                        var params = isGroup
-                            ? JSON.stringify({ group_id: targetId,
-                                               message: segs })
-                            : JSON.stringify({ user_id: targetId,
-                                               message: segs })
-                        pending[ob.sendAction(
-                            isGroup ? "send_group_msg"
-                                    : "send_private_msg",
-                            params)] = function(ok) {
-                            if (ok) {
-                                // NapCat 不回显自己发的消息，本地立即渲染
-                                lastSent = { text: txt, ts: Date.now() }
-                                appendMsg(isGroup ? "群" : "私聊",
-                                          "我", txt, true)
-                                if (hub)
-                                    hub.touchConv(targetKey, "我", txt)
-                                replyTarget = null
-                                inputField.text = ""
-                            } else {
-                                appendMsg("sys", "", "发送失败 ✗")
-                            }
+                        var params = isGroup ? JSON.stringify({ group_id: targetId, message: segs }) : JSON.stringify({ user_id: targetId, message: segs })
+                        pending[ob.sendAction(isGroup ? "send_group_msg" : "send_private_msg", params)] = function(ok) {
+                            if (ok) { lastSent = { text: txt, ts: Date.now() }; appendMsg(isGroup ? "群" : "私聊", "我", txt, true); if (hub) hub.touchConv(targetKey, "我", txt); replyTarget = null; inputField.text = "" } else appendMsg("sys", "", "发送失败 ✗")
                         }
                     }
                 }
             }
-        }
-    }
 
-    Component.onCompleted: {
-        // push() assigns properties after construction; the real
-        // history load is triggered by ConversationsPage.openConv()
+            Item { width: 1; height: 2 }
+        }
     }
 }

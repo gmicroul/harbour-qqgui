@@ -34,6 +34,9 @@ OTHER_FILES += \
     qml/pages/VideoTile.qml \
     qml/pages/FileTile.qml \
     qml/pages/FaceTile.qml \
+    qml/components/GlassBackground.qml \
+    qml/components/GlassCard.qml \
+    qml/components/GlassSection.qml \
     harbour-qqcat.desktop \
     qml/js/pinyin.js \
     rpm/harbour-qqcat.spec
@@ -58,10 +61,13 @@ qmlimages.files = qml/images/*.png
 qmljs.path = /usr/share/harbour-qqcat/qml/js
 qmljs.files = qml/js/pinyin.js
 
+qmlcomponents.path = /usr/share/harbour-qqcat/qml/components
+qmlcomponents.files = qml/components/*.qml
+
 desktop.path = /usr/share/applications
 desktop.files = harbour-qqcat.desktop
 
 icon86.path = /usr/share/icons/hicolor/86x86/apps
 icon86.files = icons/86x86/harbour-qqcat.png
 
-INSTALLS += bin qmlmain qmlpages qmlcover qmlimages qmljs desktop icon86
+INSTALLS += bin qmlmain qmlpages qmlcover qmlimages qmljs qmlcomponents desktop icon86
