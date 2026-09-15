@@ -20,6 +20,9 @@ Page {
     property bool groupsDone: false
     property bool friendsDone: false
     property bool contactsLoaded: false
+    // 新登录时 NapCat 花名册可能尚未同步：空/失败结果不锁存，退避重试
+    property int loadTries: 0
+    property int loadMaxTries: 6
     property string searchText: ""
     property string kindFilter: ""
     property var rows: []
@@ -153,26 +156,37 @@ Page {
         ob.open()
     }
 
+    function scheduleRetry() {
+        if (loadTries < loadMaxTries && !retryTimer.running)
+            retryTimer.start()
+    }
+
     function loadContacts() {
+        groupsDone = false
+        friendsDone = false
         var e1 = ob.sendAction("get_group_list", "{}")
         pend[e1] = function(ok, d) {
-            if (!ok) return
-            var a = JSON.parse(d)
-            for (var i in a)
-                groupNames[String(a[i].group_id)] =
-                        a[i].group_name || String(a[i].group_id)
+            if (!ok) { scheduleRetry(); return }
+            try {
+                var a = JSON.parse(d)
+                for (var i in a)
+                    groupNames[String(a[i].group_id)] =
+                            a[i].group_name || String(a[i].group_id)
+            } catch (e) { scheduleRetry(); return }
             groupsDone = true
             tryPopulate()
         }
         var e2 = ob.sendAction("get_friend_list", "{}")
         pend[e2] = function(ok, d) {
-            if (!ok) return
-            var a = JSON.parse(d)
-            for (var i in a) {
-                var n = (a[i].remark && a[i].remark.length)
-                        ? a[i].remark : a[i].nickname
-                friendNames[String(a[i].user_id)] = n || String(a[i].user_id)
-            }
+            if (!ok) { scheduleRetry(); return }
+            try {
+                var a = JSON.parse(d)
+                for (var i in a) {
+                    var n = (a[i].remark && a[i].remark.length)
+                            ? a[i].remark : a[i].nickname
+                    friendNames[String(a[i].user_id)] = n || String(a[i].user_id)
+                }
+            } catch (e) { scheduleRetry(); return }
             friendsDone = true
             tryPopulate()
         }
@@ -181,6 +195,13 @@ Page {
     function tryPopulate() {
         if (contactsLoaded || !groupsDone || !friendsDone)
             return
+        // 两边都拉到但全空：可能是新登录同步中，重试而非锁存
+        if (Object.keys(groupNames).length === 0
+                && Object.keys(friendNames).length === 0
+                && loadTries < loadMaxTries) {
+            scheduleRetry()
+            return
+        }
         contactsLoaded = true
         var gk = Object.keys(groupNames)
         for (var i in gk) {
@@ -241,6 +262,8 @@ Page {
                         selfId = u.user_id
                         loginLabel = u.nickname + " (" + u.user_id + ")"
                     }
+                    loadTries = 0
+                    contactsLoaded = false
                     loadContacts()
                 }
             } else {
@@ -255,6 +278,16 @@ Page {
         running: !ob.connected
         repeat: true
         onTriggered: ob.open()
+    }
+
+    Timer {
+        id: retryTimer
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            page.loadTries++
+            page.loadContacts()
+        }
     }
 
     Connections {
@@ -373,7 +406,11 @@ Page {
                 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: page.loadContacts()
+                    onClicked: {
+                        page.loadTries = 0
+                        page.contactsLoaded = false
+                        page.loadContacts()
+                    }
                 }
             }
         }
