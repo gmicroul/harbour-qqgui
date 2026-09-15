@@ -1,7 +1,7 @@
 Name:       harbour-qqgui
 Summary:    Glass UI QQ client for Sailfish OS (OneBot11)
 Version:    1.0.0
-Release:    2
+Release:    3
 License:    MIT
 URL:        https://openrepos.net/content/qqbridge
 Source0:    %{name}-%{version}.tar.bz2
@@ -51,6 +51,8 @@ install -Dm 644 icons/86x86/harbour-qqgui.png \
 %{_datarootdir}/icons/hicolor/86x86/apps/harbour-qqgui.png
 
 %changelog
+* Tue Sep 15 2026 qqbridge contributors 1.0.0-3
+- Retry roster load after fresh login (empty results no longer latch)
 * Tue Sep 15 2026 qqbridge contributors 1.0.0-2
 - Theme-scale UI (no bare px), S3-wrapped launcher icon, glass cover, InfoGlassPage, emoji panel, @-mention menu
 * Tue Sep 15 2026 qqbridge contributors 1.0.0-1
