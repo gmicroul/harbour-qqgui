@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=QQ Glass
+Comment=Glass UI QQ client for Sailfish OS (OneBot11)
+Exec=/usr/bin/harbour-qqgui
+Icon=harbour-qqgui
+X-Nemo-Application-Type=silica-qt5
+Categories=Network;InstantMessaging;
+
+[X-Sailjail]
+Sandboxing=Disabled

@@ -10,6 +10,7 @@ ui_*.h
 
 # compiled binary (same name as project)
 /harbour-qqcat
+/harbour-qqgui
 
 # rpm packaging artifacts
 /rpmbuild/

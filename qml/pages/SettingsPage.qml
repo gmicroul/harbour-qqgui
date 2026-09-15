@@ -92,7 +92,7 @@ Page {
                 width: parent.width
                 label: qsTr("WebUI token")
                 text: ob ? ob.getSetting("login/webuiToken",
-                                         "32140848d004") : ""
+                                         "") : ""
             }
 
             Button {
