@@ -204,3 +204,5 @@ systemctl --user disable --now napcat && rm ~/.config/systemd/user/napcat.servic
 - 双路径预写 OneBot 配置（含 HttpApi:3000，修复"花名册卡住"）
 - 文件式清场，杜绝 pkill 自匹配造成的僵尸实例
 - token 只认运行实例；三级下载回退 + zip 缓存；幂等重跑
+- must to do if can not scan to login:
+  pkill -f 'qq --no-sandbox'
